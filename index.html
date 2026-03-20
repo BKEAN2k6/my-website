@@ -358,4 +358,309 @@ padding: "18px 58px", fontSize: 20, fontFamily: FONT, fontWeight: 700,
 letterSpacing: "0.06em", textTransform: "uppercase",
 color: CANDY.darkPurple, background: CANDY.yellow,
 border: `3px solid ${CANDY.darkPurple}`, borderRadius: 60, cursor: "pointer",
-animation: "pulse-btn 1.8s ease-in-out
+animation: "pulse-btn 1.8s ease-in-out infinite",
+}}
+onMouseEnter={e => { e.currentTarget.style.background = CANDY.coral; e.currentTarget.style.color = CANDY.white; e.currentTarget.style.animation = "none"; }}
+onMouseLeave={e => { e.currentTarget.style.background = CANDY.yellow; e.currentTarget.style.color = CANDY.darkPurple; e.currentTarget.style.animation = "pulse-btn 1.8s ease-in-out infinite"; }}
+>
+🍬 Start Survey!
+</button>
+<p style={{ marginTop: 24, fontSize: 12, color: "rgba(201,168,232,0.5)", fontFamily: FONT }}>
+VIA-based Strength Meter · 26 Strengths
+</p>
+</div>
+);
+}
+
+function QuestionScreen({ question, index, total, onAnswer }) {
+const [selected, setSelected] = useState(null);
+const [particles, setParticles] = useState([]);
+const [exiting, setExiting] = useState(false);
+const [entered, setEntered] = useState(false);
+
+useEffect(() => {
+setSelected(null); setExiting(false);
+const t = setTimeout(() => setEntered(true), 50);
+return () => clearTimeout(t);
+}, [index]);
+
+const handleSelect = useCallback((optIdx, score, e) => {
+if (selected !== null) return;
+setSelected(optIdx);
+const rect = e.currentTarget.getBoundingClientRect();
+const cx = rect.left + rect.width / 2;
+const cy = rect.top + rect.height / 2;
+const cols = [question.color, CANDY.yellow, CANDY.white, CANDY.pink, CANDY.mint];
+const newP = Array.from({ length: 22 }, (_, i) => ({
+id: Date.now() + i,
+x: cx + (Math.random() - 0.5) * rect.width * 0.8, y: cy,
+color: cols[i % cols.length],
+}));
+setParticles(p => [...p, ...newP]);
+setTimeout(() => { setExiting(true); setTimeout(() => onAnswer(score), 420); }, 650);
+}, [selected, question.color, onAnswer]);
+
+const bgSrc = useBgImage("question");
+const bgStyle = bgSrc
+? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
+: { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
+return (
+<div style={{
+display: "flex", flexDirection: "column", alignItems: "center",
+justifyContent: "center", minHeight: "100vh", padding: "36px 20px",
+opacity: exiting ? 0 : (entered ? 1 : 0),
+transform: exiting ? "translateX(-24px) scale(0.98)" : (entered ? "translateX(0) scale(1)" : "translateX(24px) scale(0.98)"),
+transition: "opacity 0.38s ease, transform 0.38s ease",
+...bgStyle,
+}}>
+{particles.map(p => (
+<Particle key={p.id} x={p.x} y={p.y} color={p.color}
+onDone={() => setParticles(ps => ps.filter(x => x.id !== p.id))} />
+))}
+
+<ProgressBar current={index + 1} total={total} />
+
+<div style={{
+maxWidth: 500, width: "100%",
+background: "rgba(255,255,255,0.10)", border: `2px solid rgba(255,255,255,0.20)`,
+borderRadius: 28, padding: "36px 32px 32px", marginBottom: 20,
+backdropFilter: "blur(12px)",
+boxShadow: `0 8px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)`,
+position: "relative",
+}}>
+<div style={{
+position: "absolute", top: 0, left: 0, right: 0, height: 5,
+background: `linear-gradient(90deg, ${question.color}, ${CANDY.yellow})`,
+borderRadius: "26px 26px 0 0",
+}} />
+<div style={{ marginBottom: 20, display: "inline-block", animation: "wiggle 2.5s ease-in-out infinite" }}>
+<StrengthIcon name={question.strength} emoji={question.icon} size={44} />
+</div>
+<p style={{ fontFamily: FONT, fontSize: "clamp(17px,2.8vw,21px)", color: CANDY.white, lineHeight: 1.55, fontWeight: 400, margin: 0 }}>
+{question.question}
+</p>
+</div>
+
+<div style={{ maxWidth: 500, width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+{ANSWER_OPTIONS.map((opt, i) => {
+const isSelected = selected === i;
+const isOther = selected !== null && !isSelected;
+return (
+<button key={i} onClick={e => handleSelect(i, opt.score, e)} disabled={selected !== null}
+style={{
+padding: "14px 20px", fontFamily: FONT, fontSize: 16,
+fontWeight: isSelected ? 700 : 500,
+color: isSelected ? CANDY.darkPurple : (isOther ? "rgba(255,255,255,0.25)" : CANDY.white),
+background: isSelected ? question.color : "rgba(255,255,255,0.08)",
+border: isSelected ? `2px solid ${CANDY.darkPurple}` : `2px solid rgba(255,255,255,${isOther ? "0.05" : "0.18"})`,
+borderRadius: 14, cursor: selected === null ? "pointer" : "default",
+textAlign: "left", transition: "all 0.2s ease",
+transform: isSelected ? "scale(1.02) translateX(4px)" : "scale(1)",
+boxShadow: isSelected ? `3px 3px 0px ${CANDY.darkPurple}` : "none",
+display: "flex", alignItems: "center", gap: 12,
+}}
+onMouseEnter={e => { if (selected === null) { e.currentTarget.style.background = "rgba(255,255,255,0.16)"; e.currentTarget.style.borderColor = question.color; e.currentTarget.style.transform = "translateX(6px)"; }}}
+onMouseLeave={e => { if (selected === null) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.transform = "translateX(0)"; }}}
+>
+<span style={{
+width: 26, height: 26, borderRadius: "50%",
+background: isSelected ? CANDY.darkPurple + "33" : "rgba(255,255,255,0.12)",
+display: "flex", alignItems: "center", justifyContent: "center",
+fontSize: 12, fontWeight: 700, flexShrink: 0,
+color: isSelected ? CANDY.darkPurple : CANDY.lilac,
+}}>{i + 1}</span>
+{opt.label}
+</button>
+);
+})}
+</div>
+</div>
+);
+}
+
+function ResultsScreen({ scores, onShowDistribution }) {
+const [showConfetti, setShowConfetti] = useState(true);
+const [visible, setVisible] = useState(false);
+useEffect(() => { setTimeout(() => setVisible(true), 80); setTimeout(() => setShowConfetti(false), 5500); }, []);
+
+const aggregated = STRENGTHS.map(s => {
+const items = scores.filter(sc => sc.strength === s.strength);
+const total = items.reduce((sum, sc) => sum + sc.score, 0);
+return { strength: s.strength, icon: s.icon, color: s.color, score: total };
+});
+const sorted = [...aggregated].sort((a, b) => b.score - a.score);
+const top5 = sorted.slice(0, 5);
+const medals = ["🥇","🥈","🥉","4th","5th"];
+
+const bgSrc = useBgImage("results");
+const bgStyle = bgSrc
+? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
+: { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
+return (
+<div style={{
+display: "flex", flexDirection: "column", alignItems: "center",
+minHeight: "100vh", padding: "56px 24px 48px",
+opacity: visible ? 1 : 0, transition: "opacity 0.7s ease", ...bgStyle,
+}}>
+{showConfetti && <Confetti />}
+<div style={{ fontSize: 72, animation: "bounce 1s ease-in-out infinite", marginBottom: 4 }}>🏆</div>
+<h1 style={{ fontFamily: FONT, fontSize: "clamp(26px,5vw,42px)", color: CANDY.white, textAlign: "center", marginBottom: 4, fontWeight: 700, textShadow: `3px 3px 0px ${CANDY.darkPurple}` }}>These are your</h1>
+<h1 style={{ fontFamily: FONT, fontSize: "clamp(26px,5vw,42px)", color: CANDY.yellow, textAlign: "center", marginBottom: 12, fontWeight: 700, textShadow: `3px 3px 0px ${CANDY.darkPurple}` }}>core strengths! 🎉</h1>
+<p style={{ fontFamily: FONT, fontSize: 17, color: CANDY.lilac, marginBottom: 40, textAlign: "center" }}>
+The five strengths that shine most brightly in you.
+</p>
+
+<div style={{ width: "100%", maxWidth: 500, display: "flex", flexDirection: "column", gap: 12, marginBottom: 44 }}>
+{top5.map((item, i) => (
+<div key={item.strength} style={{
+display: "flex", alignItems: "center", gap: 14,
+background: i === 0 ? `linear-gradient(135deg, ${item.color}44, ${item.color}22)` : "rgba(255,255,255,0.08)",
+border: `2px solid ${i === 0 ? item.color : "rgba(255,255,255,0.15)"}`,
+borderRadius: 18, padding: "16px 20px",
+animation: `slide-in 0.45s ease-out ${i * 0.1}s both`,
+boxShadow: i === 0 ? `3px 3px 0px ${CANDY.darkPurple}` : "none",
+}}>
+<div style={{ flexShrink: 0, width: 44, textAlign: "center", animation: i === 0 ? "wiggle 2s ease-in-out infinite" : "none" }}>
+<StrengthIcon name={item.strength} emoji={item.icon} size={36} />
+</div>
+<div style={{ flex: 1 }}>
+<div style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: i === 0 ? CANDY.white : CANDY.lilac, marginBottom: 6 }}>{item.strength}</div>
+<div style={{ display: "flex", gap: 3 }}>
+{[1,2,3,4,5,6,7,8,9,10].map(dot => (
+<div key={dot} style={{
+width: 16, height: 6, borderRadius: 3,
+background: dot <= item.score ? item.color : "rgba(255,255,255,0.12)",
+transition: `background 0.3s ease ${dot * 0.05}s`,
+boxShadow: dot <= item.score ? `0 0 6px ${item.color}88` : "none",
+}} />
+))}
+</div>
+</div>
+<div style={{ fontFamily: FONT, fontSize: i === 0 ? 32 : 22, flexShrink: 0 }}>{medals[i]}</div>
+</div>
+))}
+</div>
+
+<button onClick={onShowDistribution} style={{
+padding: "16px 44px", fontSize: 18, fontFamily: FONT, fontWeight: 700,
+color: CANDY.darkPurple, background: CANDY.mint,
+border: `3px solid ${CANDY.darkPurple}`, borderRadius: 60, cursor: "pointer",
+boxShadow: `4px 4px 0px ${CANDY.darkPurple}`, transition: "all 0.18s ease",
+}}
+onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05) rotate(-1deg)"; e.currentTarget.style.background = CANDY.yellow; }}
+onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) rotate(0deg)"; e.currentTarget.style.background = CANDY.mint; }}
+>
+📊 All Strengths
+</button>
+</div>
+);
+}
+
+function DistributionScreen({ scores, onBack }) {
+const aggregated = STRENGTHS.map(s => {
+const items = scores.filter(sc => sc.strength === s.strength);
+const total = items.reduce((sum, sc) => sum + sc.score, 0);
+return { strength: s.strength, icon: s.icon, color: s.color, score: total };
+});
+const sorted = [...aggregated].sort((a, b) => b.score - a.score);
+const [visible, setVisible] = useState(false);
+useEffect(() => { setTimeout(() => setVisible(true), 50); }, []);
+
+const bgSrc = useBgImage("results");
+const bgStyle = bgSrc
+? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
+: { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
+return (
+<div style={{ minHeight: "100vh", padding: "44px 24px 60px", opacity: visible ? 1 : 0, transition: "opacity 0.5s ease", ...bgStyle }}>
+<div style={{ maxWidth: 540, margin: "0 auto" }}>
+<button onClick={onBack} style={{
+background: "rgba(255,255,255,0.1)", border: `2px solid rgba(255,255,255,0.2)`,
+color: CANDY.white, fontFamily: FONT, fontSize: 15,
+cursor: "pointer", marginBottom: 28, borderRadius: 30,
+padding: "8px 20px", fontWeight: 600, transition: "all 0.2s ease",
+}}
+onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
+onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
+>← Back to results</button>
+
+<h2 style={{ fontFamily: FONT, fontSize: "clamp(22px,4vw,32px)", color: CANDY.white, marginBottom: 4, fontWeight: 700, textShadow: `2px 2px 0px ${CANDY.darkPurple}` }}>
+Strength Distribution
+</h2>
+<p style={{ fontFamily: FONT, fontSize: 16, color: CANDY.lilac, marginBottom: 32 }}>
+All 26 strengths scored (max 10 points)
+</p>
+
+<div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+{sorted.map((item, i) => (
+<div key={item.strength} style={{ animation: `slide-in 0.35s ease-out ${i * 0.035}s both` }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+<StrengthIcon name={item.strength} emoji={item.icon} size={22} />
+<span style={{ fontFamily: FONT, fontSize: 15, color: i < 5 ? CANDY.white : "rgba(255,255,255,0.5)", fontWeight: i < 5 ? 700 : 400 }}>
+{item.strength}
+</span>
+{i < 5 && (
+<span style={{
+fontSize: 10, color: item.color, fontFamily: FONT, fontWeight: 700,
+letterSpacing: "0.08em", textTransform: "uppercase",
+background: item.color + "22", border: `1px solid ${item.color}55`,
+borderRadius: 4, padding: "1px 6px",
+}}>core</span>
+)}
+</div>
+<span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: i < 5 ? item.color : "rgba(255,255,255,0.4)" }}>{item.score}</span>
+</div>
+<div style={{ height: 8, background: "rgba(0,0,0,0.3)", borderRadius: 4, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
+<div style={{
+height: "100%", width: `${(item.score / 10) * 100}%`,
+background: i < 5 ? `linear-gradient(90deg, ${item.color}bb, ${item.color})` : "rgba(255,255,255,0.2)",
+borderRadius: 4,
+animation: `bar-grow 0.7s cubic-bezier(0.4,0,0.2,1) ${i * 0.035}s both`,
+transformOrigin: "left",
+boxShadow: i < 5 ? `0 0 8px ${item.color}66` : "none",
+}} />
+</div>
+</div>
+))}
+</div>
+</div>
+</div>
+);
+}
+
+function App() {
+const [screen, setScreen] = useState("welcome");
+const [currentQ, setCurrentQ] = useState(0);
+const [scores, setScores] = useState([]);
+
+const handleStart = () => { setCurrentQ(0); setScores([]); setScreen("question"); };
+
+const handleAnswer = useCallback((rawScore) => {
+const q = QUESTIONS[currentQ];
+const score = q.reversed ? (6 - rawScore) : rawScore;
+const updated = [...scores, { ...q, score }];
+setScores(updated);
+if (currentQ + 1 < QUESTIONS.length) {
+setCurrentQ(qu => qu + 1);
+} else {
+setScreen("results");
+}
+}, [currentQ, scores]);
+
+return (
+<>
+{screen === "welcome" && <WelcomeScreen onStart={handleStart} />}
+{screen === "question" && <QuestionScreen key={currentQ} question={QUESTIONS[currentQ]} index={currentQ} total={QUESTIONS.length} onAnswer={handleAnswer} />}
+{screen === "results" && <ResultsScreen scores={scores} onShowDistribution={() => setScreen("distribution")} />}
+{screen === "distribution" && <DistributionScreen scores={scores} onBack={() => setScreen("results")} />}
+</>
+);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
