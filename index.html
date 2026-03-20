@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vahvuusmittari 🍬</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Gill Sans', 'Gill Sans MT', 'Trebuchet MS', sans-serif; }
+@keyframes float {
+0%, 100% { transform: translateY(0px) rotate(0deg); }
+50% { transform: translateY(-14px) rotate(3deg); }
+}
+@keyframes bounce {
+0%, 100% { transform: translateY(0px); }
+50% { transform: translateY(-10px); }
+}
+@keyframes wiggle {
+0%, 100% { transform: rotate(-5deg); }
+50% { transform: rotate(5deg); }
+}
+@keyframes particle-burst {
+0% { transform: translate(0, 0) scale(1.2); opacity: 1; }
+100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+@keyframes confetti-fall {
+0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+@keyframes slide-in {
+from { opacity: 0; transform: translateX(20px); }
+to { opacity: 1; transform: translateX(0); }
+}
+@keyframes bar-grow {
+from { transform: scaleX(0); }
+to { transform: scaleX(1); }
+}
+@keyframes pulse-btn {
+0%, 100% { transform: scale(1) rotate(0deg); box-shadow: 4px 4px 0px #2D1A55, 0 0 16px #F5C84244; }
+50% { transform: scale(1.07) rotate(-1deg); box-shadow: 4px 4px 0px #2D1A55, 0 0 40px #F5C84299; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+
+/* ============================================================
+=== KUVA-ASETUKSET ===
+
+
+KANSIO: Laita kuvat haluamaasi kansioon ja aseta polku alle.
+Oletuksena "kuvat/" — voit vaihtaa mihin tahansa.
+
+
+NIMEÄMINEN: Nimeä kuvatiedostot vahvuuden nimellä.
+Välilyönnit → väliviiva, skandit OK tai ascii.
+Esim: luovuus.png / sosiaalinen-alykkyys.png
+
+
+TUETUT FORMAATIT: .png .jpg .jpeg .webp .svg
+Jos kuvaa ei löydy, emoji toimii automaattisesti varauksena.
+
+
+TAUSTAKUVAT (valinnainen):
+welcome-bg.png → tervetuloruutu
+question-bg.png → kysymysruutu
+results-bg.png → tulosruutu
+
+
+LOGO (valinnainen): logo.png
+============================================================ */
+const KUVA_KANSIO = ""; // tyhjä = kuvat samassa kansiossa kuin index.html
+/* ============================================================ */
+
+
+// Muuntaa vahvuuden nimen tiedostonimeksi: "Sosiaalinen älykkyys" → "sosiaalinen-alykkyys"
+function nimiTiedostoksi(nimi) {
+return nimi
+.toLowerCase()
+.replace(/ä/g, "a").replace(/ö/g, "o").replace(/å/g, "a")
+.replace(/\s+/g, "-")
+.replace(/[^a-z0-9\-]/g, "");
+}
+
+
+// Kokeilee ladata kuvan — palauttaa true jos onnistui, false jos ei löydy
+function useImageExists(src) {
+const [exists, setExists] = useState(false);
+useEffect(() => {
+if (!src) return;
+const img = new Image();
+img.onload = () => setExists(true);
+img.onerror = () => setExists(false);
+img.src = src;
+}, [src]);
+return exists;
+}
+
+
+// Etsii automaattisesti kuvan eri formaateissa
+function useAutoImage(vahvuudenNimi) {
+const base = KUVA_KANSIO + nimiTiedostoksi(vahvuudenNimi);
+const formats = [".png", ".jpg", ".jpeg", ".webp", ".svg"];
+const [foundSrc, setFoundSrc] = useState(null);
+
+
+useEffect(() => {
+let cancelled = false;
+async function tryFormats() {
+for (const ext of formats) {
+const src = base + ext;
+const ok = await new Promise(resolve => {
+const img = new Image();
+img.onload = () => resolve(true);
+img.onerror = () => resolve(false);
+img.src = src;
+});
+if (ok && !cancelled) { setFoundSrc(src); return; }
+}
+}
+tryFormats();
+return () => { cancelled = true; };
+}, [base]);
+
+
+return foundSrc;
+}
+
+
+const CANDY = {
+bg: "#6B3FA0", bgDark: "#4A2A78",
+yellow: "#F5C842", coral: "#F0614A", pink: "#F2A0B8",
+mint: "#7ECFB3", teal: "#4BBFAD", orange: "#F5843A",
+lilac: "#C9A8E8", blue: "#5BAFD6", red: "#E8404A",
+white: "#FFF8F0", darkPurple: "#2D1A55",
+};
+
+
+const STRENGTHS = [
+{ strength: "Luovuus", icon: "🍬", color: CANDY.coral, statements: [
+{ text: "Saan usein kuulla toisilta, että keksin omaperäisiä ideoita.", reversed: false },
+{ text: "Haluan tehdä asiat aina samalla, tutulla tavalla.", reversed: true }]},
+{ strength: "Uteliaisuus", icon: "🐛", color: CANDY.yellow, statements: [
+{ text: "Uteliaisuuteni pursuaa monille elämänaloille, kuten opiskeluun, matkusteluun ja uusiin ihmisiin tutustumiseen.", reversed: false },
+{ text: "Haluan jatkuvasti oppia uutta ja olen laajalti kiinnostunut asioista, ihmisistä, ilmiöistä.", reversed: false }]},
+{ strength: "Arviointikyky", icon: "🐟", color: CANDY.mint, statements: [
+{ text: "Osaan ajatella järkevästi erilaisissa tilanteissa ja harkita eri vaihtoehtoja.", reversed: false },
+{ text: "Teen päätöksiä vasta kun tiedän asiasta kaiken.", reversed: true }]},
+{ strength: "Oppimisen ilo", icon: "🍭", color: CANDY.pink, statements: [
+{ text: "Olen kiinnostunut lukuisista asioista ja haluan jatkuvasti oppia uutta.", reversed: false },
+{ text: "Vierailen mielelläni kirjastossa, luen paljon ja seuraan eri uutiskanavia.", reversed: false }]},
+{ strength: "Näkökulmanottokyky", icon: "🐻", color: CANDY.orange, statements: [
+{ text: "Kykenen punnitsemaan eri vaihtoehtoja ja vaihtamaan tapaani ajatella.", reversed: false },
+{ text: "Minulta pyydetään usein neuvoja ja koen, että mielipiteitäni arvostetaan.", reversed: false }]},
+{ strength: "Rohkeus", icon: "💀", color: CANDY.lilac, statements: [
+{ text: "Puolustan mielipidettäni ja uskallan kertoa, mitä ajattelen, vaikka kohtaisin jyrkkääkin vastustusta.", reversed: false },
+{ text: "Uudet asiat ja tilanteet rajoittavat usein tekemisiäni.", reversed: true }]},
+{ strength: "Sinnikkyys", icon: "🍫", color: CANDY.yellow, statements: [
+{ text: "Jos päätän jotain, teen sen, vaikka haasteita ja vastoinkäymisiä ilmenisi.", reversed: false },
+{ text: "En pysy asettamissani tavoitteissa ja vastoinkäymiset saavat minut luovuttamaan herkästi.", reversed: true }]},
+{ strength: "Rehellisyys", icon: "🍋", color: CANDY.teal, statements: [
+{ text: "Puhun kaunistelematta sen puolesta, mikä on mielestäni oikein ja totta.", reversed: false },
+{ text: "Saatan joissakin tilanteissa ajatella tai käyttäytyä toisin kuin tavallisesti, jotta minut hyväksytään.", reversed: true }]},
+{ strength: "Innostus", icon: "⭐", color: CANDY.coral, statements: [
+{ text: "Ystäväni kuvailisivat minua energiseksi, tarmokkaaksi ja hyväntuuliseksi.", reversed: false },
+{ text: "Olen passiivinen enkä innostu helposti uusista asioista ja ihmisistä.", reversed: true }]},
+{ strength: "Sisu", icon: "🥊", color: CANDY.orange, statements: [
+{ text: "Teen mitä tehdä pitää, vaikka vastoinkäymisiä ilmenisi.", reversed: false },
+{ text: "Pystyn tarvittaessa parantamaan suoritustani ja ponnistelemaan vielä tehokkaammin.", reversed: false }]},
+{ strength: "Myötätunto", icon: "🫶", color: CANDY.pink, statements: [
+{ text: "Kun tiedän, että jollain ihmisellä on vaikea tilanne, koen paljon myötätuntoa häntä kohtaan.", reversed: false },
+{ text: "Yksi elämääni eniten merkitystä tuovista asioista on muiden ihmisten auttaminen.", reversed: false }]},
+{ strength: "Rakkaus", icon: "🩷", color: CANDY.red, statements: [
+{ text: "Osoitan läheisilleni välittämistäni sanoin, teoin ja viettämällä paljon aikaa heidän kanssaan.", reversed: false },
+{ text: "Minun on vaikea ottaa vastaan toisten osoittamaa läheisyyttä ja rakkautta.", reversed: true }]},
+{ strength: "Ystävällisyys", icon: "🐷", color: CANDY.mint, statements: [
+{ text: "Olen mielelläni avuksi tai hyödyksi.", reversed: false },
+{ text: "Tunnen, että \"toisten onni on minulta pois\", enkä osaa iloita toisen onnistumisista.", reversed: true }]},
+{ strength: "Sosiaalinen älykkyys",icon: "🫧", color: CANDY.blue, statements: [
+{ text: "Pärjään hyvin erilaisissa sosiaalisissa tilanteissa ja uusien ihmisten parissa.", reversed: false },
+{ text: "Minun on vaikea tunnistaa muiden ihmisten tunnetiloja.", reversed: true }]},
+{ strength: "Ryhmätyötaidot", icon: "🍡", color: CANDY.teal, statements: [
+{ text: "Parhaat puoleni pääsevät käyttöön ryhmässä, ja minua motivoi ryhmän onnistuminen.", reversed: false },
+{ text: "En ota mielelläni vastuuta ryhmän jäsenenä ja olen mieluummin hieman passiivinen.", reversed: true }]},
+{ strength: "Reiluus", icon: "⚖️", color: CANDY.yellow, statements: [
+{ text: "Minulle on tärkeää kohdella kaikkia tasapuolisesti.", reversed: false },
+{ text: "Ennakkoluuloni ja tunteeni vaikuttavat siihen, miten kohtelen toisia ihmisiä.", reversed: true }]},
+{ strength: "Johtajuus", icon: "🍊", color: CANDY.coral, statements: [
+{ text: "Minua voisi kuvailla vahvaksi ja reiluksi johtajaksi.", reversed: false },
+{ text: "En saa kovin helposti toisia innostettua mukaan yhteiseen tekemiseen.", reversed: true }]},
+{ strength: "Anteeksiantavuus", icon: "🌸", color: CANDY.pink, statements: [
+{ text: "En kaivele menneitä, vaan minun on helppo irrottautua niistä ja mennä elämässä eteenpäin.", reversed: false },
+{ text: "Muistan selkeästi aiemmin kokemani vääryydet.", reversed: true }]},
+{ strength: "Vaatimattomuus", icon: "🫐", color: CANDY.lilac, statements: [
+{ text: "En tee itsestäni numeroa missään tilanteissa ja pitäydyn mielelläni taustalla.", reversed: false },
+{ text: "Ystäväni kuvailisivat minua vaatimattomaksi.", reversed: false }]},
+{ strength: "Harkitsevaisuus", icon: "🔵", color: CANDY.blue, statements: [
+{ text: "Teen aina harkittuja päätöksiä.", reversed: false },
+{ text: "Olen spontaani ja elän hetkessä.", reversed: true }]},
+{ strength: "Itsesäätely", icon: "🍦", color: CANDY.mint, statements: [
+{ text: "Pystyn säätelemään tunteitani ja käytöstäni tilanteisiin sopivaksi.", reversed: false },
+{ text: "Minun on vaikea vastustaa turhaa tekemistä, vaikka olisin niin päättänyt (esim. kännykän jatkuva näpelöinti).", reversed: true }]},
+{ strength: "Kauneuden arvostus", icon: "🌈", color: CANDY.coral, statements: [
+{ text: "Huomaan kauniita yksityiskohtia ja pysähdyn usein niiden äärellä.", reversed: false },
+{ text: "Pysähdyn harvoin taiteen tai ympäristön kauneuden äärelle, enkä kiinnitä usein huomiotani yksityiskohtiin.", reversed: true }]},
+{ strength: "Kiitollisuus", icon: "✨", color: CANDY.yellow, statements: [
+{ text: "En juurikaan koe kiitollisuutta elämän pienistä asioista.", reversed: true },
+{ text: "Perheeni kertoisi, että kiitän usein ja olen vilpittömästi kiitollinen.", reversed: false }]},
+{ strength: "Toiveikkuus", icon: "🚀", color: CANDY.teal, statements: [
+{ text: "Minun on helppoa nähdä asioissa niiden hyvät puolet ja näen tulevaisuuden myönteisenä.", reversed: false },
+{ text: "Minun on vaikea nähdä ulospääsyä vastoinkäymisistä.", reversed: true }]},
+{ strength: "Huumorintaju", icon: "😄", color: CANDY.red, statements: [
+{ text: "Löydän vaikeistakin elämäntilanteista huumoria ja pieniä ilon pilkahduksia.", reversed: false },
+{ text: "Kerron mielelläni vitsejä ja saan muut nauramaan ja iloitsemaan.", reversed: false }]},
+{ strength: "Hengellisyys", icon: "🔮", color: CANDY.lilac, statements: [
+{ text: "Ajattelen, että elämällä on jokin syvempi tarkoitus.", reversed: false },
+{ text: "En juuri koskaan mieti elämän suurempiin merkityksiin liittyviä asioita.", reversed: true }]},
+];
+
+
+const QUESTIONS = STRENGTHS.flatMap((s) =>
+s.statements.map((st) => ({
+strength: s.strength, icon: s.icon, color: s.color,
+question: st.text, reversed: st.reversed,
+}))
+);
+
+
+const ANSWER_OPTIONS = [
+{ label: "Minuun hyvin sopiva", score: 5 },
+{ label: "Minuun sopiva", score: 4 },
+{ label: "Neutraali", score: 3 },
+{ label: "Minuun huonosti sopiva", score: 2 },
+{ label: "Minuun erittäin huonosti sopiva", score: 1 },
+];
+
+
+const FONT = "'Gill Sans', 'Gill Sans MT', 'Trebuchet MS', sans-serif";
+
+
+// Näyttää automaattisesti kuvan jos löytyy, muuten emojin
+function StrengthIcon({ name, emoji, size = 44, style = {} }) {
+const src = useAutoImage(name);
+if (src) {
+return <img src={src} alt={name} style={{ width: size, height: size, objectFit: "contain", ...style }} />;
+}
+return <span style={{ fontSize: size * 0.9, lineHeight: 1, display: "inline-block", ...style }}>{emoji}</span>;
+}
+
+
+// Taustakuva — etsii automaattisesti: welcome-bg, question-bg, results-bg
+function useBgImage(key) {
+const base = KUVA_KANSIO + key + "-bg";
+const [src, setSrc] = useState(null);
+useEffect(() => {
+let cancelled = false;
+async function tryFormats() {
+for (const ext of [".png",".jpg",".jpeg",".webp"]) {
+const ok = await new Promise(resolve => {
+const img = new Image();
+img.onload = () => resolve(true);
+img.onerror = () => resolve(false);
+img.src = base + ext;
+});
+if (ok && !cancelled) { setSrc(base + ext); return; }
+}
+}
+tryFormats();
+return () => { cancelled = true; };
+}, [base]);
+return src;
+}
+
+
+// Logo — etsii automaattisesti logo.png/jpg/svg
+function useLogo() {
+const [src, setSrc] = useState(null);
+useEffect(() => {
+let cancelled = false;
+async function tryFormats() {
+for (const ext of [".png",".jpg",".svg",".webp"]) {
+const ok = await new Promise(resolve => {
+const img = new Image();
+img.onload = () => resolve(true);
+img.onerror = () => resolve(false);
+img.src = KUVA_KANSIO + "logo" + ext;
+});
+if (ok && !cancelled) { setSrc(KUVA_KANSIO + "logo" + ext); return; }
+}
+}
+tryFormats();
+return () => { cancelled = true; };
+}, []);
+return src;
+}
+
+
+function Particle({ x, y, color, onDone }) {
+useEffect(() => { const t = setTimeout(onDone, 800); return () => clearTimeout(t); }, [onDone]);
+const dx = (Math.random() - 0.5) * 140;
+const dy = -(Math.random() * 120 + 50);
+return (
+<div style={{
+position: "fixed", left: x, top: y, width: 10, height: 10,
+borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+backgroundColor: color, pointerEvents: "none", zIndex: 9999,
+animation: "particle-burst 0.8s ease-out forwards",
+"--dx": dx + "px", "--dy": dy + "px",
+}} />
+);
+}
+
+
+function Confetti() {
+const colors = [CANDY.yellow, CANDY.coral, CANDY.pink, CANDY.mint, CANDY.orange, CANDY.blue, CANDY.lilac, CANDY.red, CANDY.white];
+const pieces = Array.from({ length: 100 }, (_, i) => ({
+left: `${Math.random() * 100}%`, top: "-20px",
+width: 7 + Math.random() * 9,
+height: Math.random() > 0.5 ? 7 + Math.random() * 9 : 3 + Math.random() * 4,
+backgroundColor: colors[i % colors.length],
+borderRadius: Math.random() > 0.6 ? "50%" : "2px",
+transform: `rotate(${Math.random() * 360}deg)`,
+animation: `confetti-fall ${2 + Math.random() * 2.5}s ${Math.random() * 2}s ease-in forwards`,
+position: "fixed", zIndex: 9998, pointerEvents: "none",
+}));
+return <div>{pieces.map((s, i) => <div key={i} style={s} />)}</div>;
+}
+
+
+function ProgressBar({ current, total }) {
+const pct = (current / total) * 100;
+return (
+<div style={{ width: "100%", maxWidth: 500, margin: "0 auto 28px" }}>
+<div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+<span style={{ fontSize: 13, color: CANDY.lilac, fontFamily: FONT, fontWeight: 600 }}>
+Väittämä {current} / {total}
+</span>
+<span style={{ fontSize: 13, color: CANDY.lilac, fontFamily: FONT, fontWeight: 600 }}>
+{Math.round(pct)}%
+</span>
+</div>
+<div style={{ height: 10, background: "rgba(0,0,0,0.25)", borderRadius: 10, overflow: "hidden", border: "2px solid rgba(255,255,255,0.15)" }}>
+<div style={{
+height: "100%", width: `${pct}%`,
+background: `linear-gradient(90deg, ${CANDY.pink}, ${CANDY.yellow})`,
+borderRadius: 10, transition: "width 0.5s cubic-bezier(0.4,0,0.2,1)",
+boxShadow: `0 0 12px ${CANDY.yellow}88`,
+}} />
+</div>
+</div>
+);
+}
+
+
+// Floating background icon — tries custom image first, falls back to emoji
+function FloatingIcon({ strength, emoji, index }) {
+const src = useAutoImage(strength);
+const size = 32 + (index % 3) * 12;
+const style = {
+position: "absolute",
+opacity: 0.2,
+top: `${10 + (index * 11) % 80}%`,
+left: `${5 + (index * 13) % 90}%`,
+animation: `float ${3 + index * 0.4}s ease-in-out infinite`,
+animationDelay: `${index * 0.5}s`,
+pointerEvents: "none", userSelect: "none",
+};
+if (src) {
+return <img src={src} alt="" style={{ ...style, width: size, height: size, objectFit: "contain" }} />;
+}
+return <div style={{ ...style, fontSize: size }}>{emoji}</div>;
+}
+
+
+function WelcomeScreen({ onStart }) {
+const bgSrc = useBgImage("welcome");
+const logoSrc = useLogo();
+const bgStyle = bgSrc
+? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
+: { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
+
+// Pick 8 strengths spread across the full list to show as floating icons
+const floaters = [0, 3, 6, 9, 12, 15, 18, 22].map(i => STRENGTHS[i]);
+
+
+return (
+<div style={{
+display: "flex", flexDirection: "column", alignItems: "center",
+justifyContent: "center", minHeight: "100vh", padding: "40px 24px",
+textAlign: "center", position: "relative", overflow: "hidden", ...bgStyle,
+}}>
+{floaters.map((s, i) => (
+<FloatingIcon key={s.strength} strength={s.strength} emoji={s.icon} index={i} />
+))}
+
+
+{logoSrc && (
+<img src={logoSrc} alt="logo"
+style={{ width: 120, marginBottom: 24, position: "relative", zIndex: 1 }} />
+)}
+
+
+<div style={{ marginBottom: 16, animation: "bounce 1.2s ease-in-out infinite" }}>
+<StrengthIcon name={STRENGTHS[0].strength} emoji={STRENGTHS[0].icon} size={80} />
+</div>
+
+
+<h1 style={{ fontFamily: FONT, fontSize: "clamp(28px,6vw,50px)", fontWeight: 700, color: CANDY.white, lineHeight: 1.2, marginBottom: 6, textShadow: `3px 3px 0px ${CANDY.darkPurple}` }}>
+Tervetuloa mittaamaan
+</h1>
+<h1 style={{ fontFamily: FONT, fontSize: "clamp(28px,6vw,50px)", fontWeight: 700, color: CANDY.yellow, lineHeight: 1.2, marginBottom: 20, textShadow: `3px 3px 0px ${CANDY.darkPurple}` }}>
+vahvuutesi!
+</h1>
+<p style={{ fontFamily: FONT, fontSize: "clamp(15px,2.2vw,18px)", color: CANDY.lilac, maxWidth: 380, lineHeight: 1.65, marginBottom: 52 }}>
+48 väittämää paljastavat ainutlaatuiset ydinvahvuutesi.
+Vastaa rehellisesti — ei oikeita tai vääriä vastauksia.
+</p>
+
+
+<button onClick={onStart} style={{
+padding: "18px 58px", fontSize: 20, fontFamily: FONT, fontWeight: 700,
+letterSpacing: "0.06em", textTransform: "uppercase",
+color: CANDY.darkPurple, background: CANDY.yellow,
+border: `3px solid ${CANDY.darkPurple}`, borderRadius: 60, cursor: "pointer",
+animation: "pulse-btn 1.8s ease-in-out infinite",
+}}
+onMouseEnter={e => { e.currentTarget.style.background = CANDY.coral; e.currentTarget.style.color = CANDY.white; e.currentTarget.style.animation = "none"; }}
+onMouseLeave={e => { e.currentTarget.style.background = CANDY.yellow; e.currentTarget.style.color = CANDY.darkPurple; e.currentTarget.style.animation = "pulse-btn 1.8s ease-in-out infinite"; }}
+>
+🍬 Aloita kysely!
+</button>
+<p style={{ marginTop: 24, fontSize: 12, color: "rgba(201,168,232,0.5)", fontFamily: FONT }}>
+VIA-pohjainen vahvuusmittari · 25 vahvuutta
+</p>
+</div>
+);
+}
+
+
+function QuestionScreen({ question, index, total, onAnswer }) {
+const [selected, setSelected] = useState(null);
+const [particles, setParticles] = useState([]);
+const [exiting, setExiting] = useState(false);
+const [entered, setEntered] = useState(false);
+
+
+useEffect(() => {
+setSelected(null); setExiting(false);
+const t = setTimeout(() => setEntered(true), 50);
+return () => clearTimeout(t);
+}, [index]);
+
+
+const handleSelect = useCallback((optIdx, score, e) => {
+if (selected !== null) return;
+setSelected(optIdx);
+const rect = e.currentTarget.getBoundingClientRect();
+const cx = rect.left + rect.width / 2;
+const cy = rect.top + rect.height / 2;
+const cols = [question.color, CANDY.yellow, CANDY.white, CANDY.pink, CANDY.mint];
+const newP = Array.from({ length: 22 }, (_, i) => ({
+id: Date.now() + i,
+x: cx + (Math.random() - 0.5) * rect.width * 0.8, y: cy,
+color: cols[i % cols.length],
+}));
+setParticles(p => [...p, ...newP]);
+setTimeout(() => { setExiting(true); setTimeout(() => onAnswer(score), 420); }, 650);
+}, [selected, question.color, onAnswer]);
+
+
+const bgSrc = useBgImage("question");
+const bgStyle = bgSrc
+? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
+: { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
+
+return (
+<div style={{
+display: "flex", flexDirection: "column", alignItems: "center",
+justifyContent: "center", minHeight: "100vh", padding: "36px 20px",
+opacity: exiting ? 0 : (entered ? 1 : 0),
+transform: exiting ? "translateX(-24px) scale(0.98)" : (entered ? "translateX(0) scale(1)" : "translateX(24px) scale(0.98)"),
+transition: "opacity 0.38s ease, transform 0.38s ease",
+...bgStyle,
+}}>
+{particles.map(p => (
+<Particle key={p.id} x={p.x} y={p.y} color={p.color}
+onDone={() => setParticles(ps => ps.filter(x => x.id !== p.id))} />
+))}
+
+
+<ProgressBar current={index + 1} total={total} />
+
+
+<div style={{
+maxWidth: 500, width: "100%",
+background: "rgba(255,255,255,0.10)", border: `2px solid rgba(255,255,255,0.20)`,
+borderRadius: 28, padding: "36px 32px 32px", marginBottom: 20,
+backdropFilter: "blur(12px)",
+boxShadow: `0 8px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)`,
+position: "relative",
+}}>
+<div style={{
+position: "absolute", top: 0, left: 0, right: 0, height: 5,
+background: `linear-gradient(90deg, ${question.color}, ${CANDY.yellow})`,
+borderRadius: "26px 26px 0 0",
+}} />
+<div style={{ marginBottom: 20, display: "inline-block", animation: "wiggle 2.5s ease-in-out infinite" }}>
+<StrengthIcon name={question.strength} emoji={question.icon} size={44} />
+</div>
+<p style={{ fontFamily: FONT, fontSize: "clamp(17px,2.8vw,21px)", color: CANDY.white, lineHeight: 1.55, fontWeight: 400, margin: 0 }}>
+{question.question}
+</p>
+</div>
+
+
+<div style={{ maxWidth: 500, width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+{ANSWER_OPTIONS.map((opt, i) => {
+const isSelected = selected === i;
+const isOther = selected !== null && !isSelected;
+return (
+<button key={i} onClick={e => handleSelect(i, opt.score, e)} disabled={selected !== null}
+style={{
+padding: "14px 20px", fontFamily: FONT, fontSize: 16,
+fontWeight: isSelected ? 700 : 500,
+color: isSelected ? CANDY.darkPurple : (isOther ? "rgba(255,255,255,0.25)" : CANDY.white),
+background: isSelected ? question.color : "rgba(255,255,255,0.08)",
+border: isSelected ? `2px solid ${CANDY.darkPurple}` : `2px solid rgba(255,255,255,${isOther ? "0.05" : "0.18"})`,
+borderRadius: 14, cursor: selected === null ? "pointer" : "default",
+textAlign: "left", transition: "all 0.2s ease",
+transform: isSelected ? "scale(1.02) translateX(4px)" : "scale(1)",
+boxShadow: isSelected ? `3px 3px 0px ${CANDY.darkPurple}` : "none",
+display: "flex", alignItems: "center", gap: 12,
+}}
+onMouseEnter={e => { if (selected === null) { e.currentTarget.style.background = "rgba(255,255,255,0.16)"; e.currentTarget.style.borderColor = question.color; e.currentTarget.style.transform = "translateX(6px)"; }}}
+onMouseLeave={e => { if (selected === null) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.transform = "translateX(0)"; }}}
+>
+<span style={{
+width: 26, height: 26, borderRadius: "50%",
+background: isSelected ? CANDY.darkPurple + "33" : "rgba(255,255,255,0.12)",
+display: "flex", alignItems: "center", justifyContent: "center",
+fontSize: 12, fontWeight: 700, flexShrink: 0,
+color: isSelected ? CANDY.darkPurple : CANDY.lilac,
+}}>{i + 1}</span>
+{opt.label}
+</button>
+);
+})}
+</div>
+</div>
+);
+}
+
+
+function ResultsScreen({ scores, onShowDistribution }) {
+const [showConfetti, setShowConfetti] = useState(true);
+const [visible, setVisible] = useState(false);
+useEffect(() => { setTimeout(() => setVisible(true), 80); setTimeout(() => setShowConfetti(false), 5500); }, []);
+
+
+const aggregated = STRENGTHS.map(s => {
+const items = scores.filter(sc => sc.strength === s.strength);
+const total = items.reduce((sum, sc) => sum + sc.score, 0);
+return { strength: s.strength, icon: s.icon, color: s.color, score: total };
+});
+const sorted = [...aggregated].sort((a, b) => b.score - a.score);
+const top5 = sorted.slice(0, 5);
+const medals = ["🥇","🥈","🥉","4.","5."];
+
+
+const bgSrc = useBgImage("results");
+const bgStyle = bgSrc
+? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
+: { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
+
+return (
+<div style={{
+display: "flex", flexDirection: "column", alignItems: "center",
+minHeight: "100vh", padding: "56px 24px 48px",
+opacity: visible ? 1 : 0, transition: "opacity 0.7s ease", ...bgStyle,
+}}>
+{showConfetti && <Confetti />}
+<div style={{ fontSize: 72, animation: "bounce 1s ease-in-out infinite", marginBottom: 4 }}>🏆</div>
+<h1 style={{ fontFamily: FONT, fontSize: "clamp(26px,5vw,42px)", color: CANDY.white, textAlign: "center", marginBottom: 4, fontWeight: 700, textShadow: `3px 3px 0px ${CANDY.darkPurple}` }}>Nämä ovat</h1>
+<h1 style={{ fontFamily: FONT, fontSize: "clamp(26px,5vw,42px)", color: CANDY.yellow, textAlign: "center", marginBottom: 12, fontWeight: 700, textShadow: `3px 3px 0px ${CANDY.darkPurple}` }}>ydinvahvuutesi! 🎉</h1>
+<p style={{ fontFamily: FONT, fontSize: 17, color: CANDY.lilac, marginBottom: 40, textAlign: "center" }}>
+Viisi vahvuuttasi, jotka loistavat kirkkaimmin
+</p>
+
+
+<div style={{ width: "100%", maxWidth: 500, display: "flex", flexDirection: "column", gap: 12, marginBottom: 44 }}>
+{top5.map((item, i) => (
+<div key={item.strength} style={{
+display: "flex", alignItems: "center", gap: 14,
+background: i === 0 ? `linear-gradient(135deg, ${item.color}44, ${item.color}22)` : "rgba(255,255,255,0.08)",
+border: `2px solid ${i === 0 ? item.color : "rgba(255,255,255,0.15)"}`,
+borderRadius: 18, padding: "16px 20px",
+animation: `slide-in 0.45s ease-out ${i * 0.1}s both`,
+boxShadow: i === 0 ? `3px 3px 0px ${CANDY.darkPurple}` : "none",
+}}>
+<div style={{ flexShrink: 0, width: 44, textAlign: "center", animation: i === 0 ? "wiggle 2s ease-in-out infinite" : "none" }}>
+<StrengthIcon name={item.strength} emoji={item.icon} size={36} />
+</div>
+<div style={{ flex: 1 }}>
+<div style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: i === 0 ? CANDY.white : CANDY.lilac, marginBottom: 6 }}>{item.strength}</div>
+<div style={{ display: "flex", gap: 3 }}>
+{[1,2,3,4,5,6,7,8,9,10].map(dot => (
+<div key={dot} style={{
+width: 16, height: 6, borderRadius: 3,
+background: dot <= item.score ? item.color : "rgba(255,255,255,0.12)",
+transition: `background 0.3s ease ${dot * 0.05}s`,
+boxShadow: dot <= item.score ? `0 0 6px ${item.color}88` : "none",
+}} />
+))}
+</div>
+</div>
+<div style={{ fontFamily: FONT, fontSize: i === 0 ? 32 : 22, flexShrink: 0 }}>{medals[i]}</div>
+</div>
+))}
+</div>
+
+
+<button onClick={onShowDistribution} style={{
+padding: "16px 44px", fontSize: 18, fontFamily: FONT, fontWeight: 700,
+color: CANDY.darkPurple, background: CANDY.mint,
+border: `3px solid ${CANDY.darkPurple}`, borderRadius: 60, cursor: "pointer",
+boxShadow: `4px 4px 0px ${CANDY.darkPurple}`, transition: "all 0.18s ease",
+}}
+onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05) rotate(-1deg)"; e.currentTarget.style.background = CANDY.yellow; }}
+onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) rotate(0deg)"; e.currentTarget.style.background = CANDY.mint; }}
+>
+📊 Vahvuuteni
+</button>
+</div>
+);
+}
+
+
+function DistributionScreen({ scores, onBack }) {
+const aggregated = STRENGTHS.map(s => {
+const items = scores.filter(sc => sc.strength === s.strength);
+const total = items.reduce((sum, sc) => sum + sc.score, 0);
+return { strength: s.strength, icon: s.icon, color: s.color, score: total };
+});
+const sorted = [...aggregated].sort((a, b) => b.score - a.score);
+const [visible, setVisible] = useState(false);
+useEffect(() => { setTimeout(() => setVisible(true), 50); }, []);
+
+
+const bgSrc = useBgImage("results");
+const bgStyle = bgSrc
+? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
+: { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
+
+return (
+<div style={{ minHeight: "100vh", padding: "44px 24px 60px", opacity: visible ? 1 : 0, transition: "opacity 0.5s ease", ...bgStyle }}>
+<div style={{ maxWidth: 540, margin: "0 auto" }}>
+<button onClick={onBack} style={{
+background: "rgba(255,255,255,0.1)", border: `2px solid rgba(255,255,255,0.2)`,
+color: CANDY.white, fontFamily: FONT, fontSize: 15,
+cursor: "pointer", marginBottom: 28, borderRadius: 30,
+padding: "8px 20px", fontWeight: 600, transition: "all 0.2s ease",
+}}
+onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
+onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
+>← Takaisin tuloksiin</button>
+
+
+<h2 style={{ fontFamily: FONT, fontSize: "clamp(22px,4vw,32px)", color: CANDY.white, marginBottom: 4, fontWeight: 700, textShadow: `2px 2px 0px ${CANDY.darkPurple}` }}>
+Vahvuuksieni jakauma
+</h2>
+<p style={{ fontFamily: FONT, fontSize: 16, color: CANDY.lilac, marginBottom: 32 }}>
+Kaikki 25 vahvuutta pisteytettyinä (max 10 pistettä)
+</p>
+
+
+<div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+{sorted.map((item, i) => (
+<div key={item.strength} style={{ animation: `slide-in 0.35s ease-out ${i * 0.035}s both` }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+<StrengthIcon name={item.strength} emoji={item.icon} size={22} />
+<span style={{ fontFamily: FONT, fontSize: 15, color: i < 5 ? CANDY.white : "rgba(255,255,255,0.5)", fontWeight: i < 5 ? 700 : 400 }}>
+{item.strength}
+</span>
+{i < 5 && (
+<span style={{
+fontSize: 10, color: item.color, fontFamily: FONT, fontWeight: 700,
+letterSpacing: "0.08em", textTransform: "uppercase",
+background: item.color + "22", border: `1px solid ${item.color}55`,
+borderRadius: 4, padding: "1px 6px",
+}}>ydin</span>
+)}
+</div>
+<span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: i < 5 ? item.color : "rgba(255,255,255,0.4)" }}>{item.score}</span>
+</div>
+<div style={{ height: 8, background: "rgba(0,0,0,0.3)", borderRadius: 4, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
+<div style={{
+height: "100%", width: `${(item.score / 10) * 100}%`,
+background: i < 5 ? `linear-gradient(90deg, ${item.color}bb, ${item.color})` : "rgba(255,255,255,0.2)",
+borderRadius: 4,
+animation: `bar-grow 0.7s cubic-bezier(0.4,0,0.2,1) ${i * 0.035}s both`,
+transformOrigin: "left",
+boxShadow: i < 5 ? `0 0 8px ${item.color}66` : "none",
+}} />
+</div>
+</div>
+))}
+</div>
+</div>
+</div>
+);
+}
+
+
+function App() {
+const [screen, setScreen] = useState("welcome");
+const [currentQ, setCurrentQ] = useState(0);
+const [scores, setScores] = useState([]);
+
+
+const handleStart = () => { setCurrentQ(0); setScores([]); setScreen("question"); };
+
+
+const handleAnswer = useCallback((rawScore) => {
+const q = QUESTIONS[currentQ];
+const score = q.reversed ? (6 - rawScore) : rawScore;
+const updated = [...scores, { ...q, score }];
+setScores(updated);
+if (currentQ + 1 < QUESTIONS.length) {
+setCurrentQ(qu => qu + 1);
+} else {
+setScreen("results");
+}
+}, [currentQ, scores]);
+
+
+return (
+<>
+{screen === "welcome" && <WelcomeScreen onStart={handleStart} />}
+{screen === "question" && <QuestionScreen key={currentQ} question={QUESTIONS[currentQ]} index={currentQ} total={QUESTIONS.length} onAnswer={handleAnswer} />}
+{screen === "results" && <ResultsScreen scores={scores} onShowDistribution={() => setScreen("distribution")} />}
+{screen === "distribution" && <DistributionScreen scores={scores} onBack={() => setScreen("results")} />}
+</>
+);
+}
+
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
+
+
+
+
