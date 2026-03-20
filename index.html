@@ -47,22 +47,44 @@ to { transform: scaleX(1); }
 <body>
 <div id="root"></div>
 
+
 <script type="text/babel">
 const { useState, useEffect, useCallback } = React;
 
+
+/* ============================================================
+=== IMAGE SETTINGS ===
+============================================================ */
 const KUVA_KANSIO = ""; 
 
-function nameToFileName(name) {
-return name
+
+function nimiTiedostoksi(nimi) {
+return nimi
 .toLowerCase()
+.replace(/ä/g, "a").replace(/ö/g, "o").replace(/å/g, "a")
 .replace(/\s+/g, "-")
 .replace(/[^a-z0-9\-]/g, "");
 }
 
-function useAutoImage(strengthName) {
-const base = KUVA_KANSIO + nameToFileName(strengthName);
+
+function useImageExists(src) {
+const [exists, setExists] = useState(false);
+useEffect(() => {
+if (!src) return;
+const img = new Image();
+img.onload = () => setExists(true);
+img.onerror = () => setExists(false);
+img.src = src;
+}, [src]);
+return exists;
+}
+
+
+function useAutoImage(vahvuudenNimi) {
+const base = KUVA_KANSIO + nimiTiedostoksi(vahvuudenNimi);
 const formats = [".png", ".jpg", ".jpeg", ".webp", ".svg"];
 const [foundSrc, setFoundSrc] = useState(null);
+
 
 useEffect(() => {
 let cancelled = false;
@@ -82,8 +104,10 @@ tryFormats();
 return () => { cancelled = true; };
 }, [base]);
 
+
 return foundSrc;
 }
+
 
 const CANDY = {
 bg: "#6B3FA0", bgDark: "#4A2A78",
@@ -92,6 +116,7 @@ mint: "#7ECFB3", teal: "#4BBFAD", orange: "#F5843A",
 lilac: "#C9A8E8", blue: "#5BAFD6", red: "#E8404A",
 white: "#FFF8F0", darkPurple: "#2D1A55",
 };
+
 
 const STRENGTHS = [
 { strength: "Creativity", icon: "🍬", color: CANDY.coral, statements: [
@@ -104,7 +129,7 @@ const STRENGTHS = [
 { text: "I can think rationally in different situations and consider various options.", reversed: false },
 { text: "I only make decisions once I know everything about the matter.", reversed: true }]},
 { strength: "Love of Learning", icon: "🍭", color: CANDY.pink, statements: [
-{ text: "I am interested in many things and want to constantly learn new skills.", reversed: false },
+{ text: "I am interested in many things and want to constantly learn new things.", reversed: false },
 { text: "I enjoy visiting libraries, reading a lot, and following various news channels.", reversed: false }]},
 { strength: "Perspective", icon: "🐻", color: CANDY.orange, statements: [
 { text: "I am able to weigh different options and change my way of thinking.", reversed: false },
@@ -114,31 +139,31 @@ const STRENGTHS = [
 { text: "New things and situations often limit my actions.", reversed: true }]},
 { strength: "Perseverance", icon: "🍫", color: CANDY.yellow, statements: [
 { text: "If I decide on something, I do it, even if challenges and setbacks occur.", reversed: false },
-{ text: "I don't stick to the goals I set, and setbacks make me give up easily.", reversed: true }]},
+{ text: "I don't stick to my goals and setbacks make me give up easily.", reversed: true }]},
 { strength: "Honesty", icon: "🍋", color: CANDY.teal, statements: [
 { text: "I speak plainly for what I believe is right and true.", reversed: false },
-{ text: "In some situations, I might think or behave differently than usual just to be accepted.", reversed: true }]},
+{ text: "In some situations, I might think or behave differently just to be accepted.", reversed: true }]},
 { strength: "Zest", icon: "⭐", color: CANDY.coral, statements: [
 { text: "My friends would describe me as energetic, vigorous, and cheerful.", reversed: false },
 { text: "I am passive and don't get excited easily about new things or people.", reversed: true }]},
-{ strength: "Sisu (Grit)", icon: "🥊", color: CANDY.orange, statements: [
+{ strength: "Grit", icon: "🥊", color: CANDY.orange, statements: [
 { text: "I do what needs to be done, even when facing adversity.", reversed: false },
-{ text: "I can improve my performance and push myself even harder when necessary.", reversed: false }]},
+{ text: "I can improve my performance and push myself even harder if necessary.", reversed: false }]},
 { strength: "Compassion", icon: "🫶", color: CANDY.pink, statements: [
 { text: "When I know someone is in a difficult situation, I feel a lot of compassion for them.", reversed: false },
-{ text: "One of the things that brings the most meaning to my life is helping other people.", reversed: false }]},
+{ text: "One of the most meaningful things in my life is helping other people.", reversed: false }]},
 { strength: "Love", icon: "🩷", color: CANDY.red, statements: [
-{ text: "I show my care for loved ones through words, actions, and spending lots of time with them.", reversed: false },
+{ text: "I show my care for loved ones through words, actions, and spending time with them.", reversed: false },
 { text: "It is difficult for me to accept closeness and love shown by others.", reversed: true }]},
 { strength: "Kindness", icon: "🐷", color: CANDY.mint, statements: [
-{ text: "I am happy to be of help or service to others.", reversed: false },
-{ text: "I feel that 'others' happiness is a loss for me,' and I can't rejoice in others' successes.", reversed: true }]},
-{ strength: "Social Intelligence", icon: "🫧", color: CANDY.blue, statements: [
+{ text: "I am happy to be of help or service.", reversed: false },
+{ text: "I feel that 'others' happiness is away from me,' and I can't rejoice in their success.", reversed: true }]},
+{ strength: "Social Intelligence",icon: "🫧", color: CANDY.blue, statements: [
 { text: "I do well in various social situations and with new people.", reversed: false },
 { text: "It is difficult for me to recognize the emotional states of others.", reversed: true }]},
 { strength: "Teamwork", icon: "🍡", color: CANDY.teal, statements: [
-{ text: "My best qualities come out in a group, and the success of the group motivates me.", reversed: false },
-{ text: "I don't enjoy taking responsibility as a group member and prefer to stay passive.", reversed: true }]},
+{ text: "My best qualities come out in a group, and the group's success motivates me.", reversed: false },
+{ text: "I don't enjoy taking responsibility in a group and prefer to stay passive.", reversed: true }]},
 { strength: "Fairness", icon: "⚖️", color: CANDY.yellow, statements: [
 { text: "It is important to me to treat everyone equally.", reversed: false },
 { text: "My prejudices and feelings affect how I treat other people.", reversed: true }]},
@@ -146,17 +171,17 @@ const STRENGTHS = [
 { text: "I could be described as a strong and fair leader.", reversed: false },
 { text: "I don't easily get others excited about doing things together.", reversed: true }]},
 { strength: "Forgiveness", icon: "🌸", color: CANDY.pink, statements: [
-{ text: "I don't dwell on the past; it's easy for me to let go and move on in life.", reversed: false },
+{ text: "I don't dwell on the past; it's easy for me to let go and move on.", reversed: false },
 { text: "I clearly remember past wrongs I have experienced.", reversed: true }]},
 { strength: "Humility", icon: "🫐", color: CANDY.lilac, statements: [
-{ text: "I don't draw attention to myself in any situation and prefer to stay in the background.", reversed: false },
+{ text: "I don't draw attention to myself and prefer to stay in the background.", reversed: false },
 { text: "My friends would describe me as modest.", reversed: false }]},
 { strength: "Prudence", icon: "🔵", color: CANDY.blue, statements: [
 { text: "I always make well-considered decisions.", reversed: false },
 { text: "I am spontaneous and live in the moment.", reversed: true }]},
 { strength: "Self-Regulation", icon: "🍦", color: CANDY.mint, statements: [
-{ text: "I can regulate my emotions and behavior to suit different situations.", reversed: false },
-{ text: "It's hard for me to resist unnecessary distractions (e.g., constantly checking my phone).", reversed: true }]},
+{ text: "I can regulate my emotions and behavior to suit the situation.", reversed: false },
+{ text: "It's hard for me to resist distractions even if I've decided otherwise.", reversed: true }]},
 { strength: "Appreciation of Beauty", icon: "🌈", color: CANDY.coral, statements: [
 { text: "I notice beautiful details and often stop to appreciate them.", reversed: false },
 { text: "I rarely stop to admire art or the beauty of the environment.", reversed: true }]},
@@ -167,12 +192,13 @@ const STRENGTHS = [
 { text: "It's easy for me to see the good side of things and I see the future as positive.", reversed: false },
 { text: "I find it hard to see a way out of setbacks.", reversed: true }]},
 { strength: "Humor", icon: "😄", color: CANDY.red, statements: [
-{ text: "I find humor and small glimmers of joy even in difficult life situations.", reversed: false },
-{ text: "I enjoy telling jokes and making others laugh and be happy.", reversed: false }]},
+{ text: "I find humor and small glimmers of joy even in difficult situations.", reversed: false },
+{ text: "I enjoy telling jokes and making others laugh.", reversed: false }]},
 { strength: "Spirituality", icon: "🔮", color: CANDY.lilac, statements: [
-{ text: "I believe that life has a deeper meaning or purpose.", reversed: false },
+{ text: "I believe that life has some deeper meaning.", reversed: false },
 { text: "I almost never think about things related to the greater meanings of life.", reversed: true }]},
 ];
+
 
 const QUESTIONS = STRENGTHS.flatMap((s) =>
 s.statements.map((st) => ({
@@ -181,15 +207,18 @@ question: st.text, reversed: st.reversed,
 }))
 );
 
+
 const ANSWER_OPTIONS = [
 { label: "Fits me very well", score: 5 },
 { label: "Fits me well", score: 4 },
 { label: "Neutral", score: 3 },
 { label: "Fits me poorly", score: 2 },
-{ label: "Does not fit me at all", score: 1 },
+{ label: "Fits me very poorly", score: 1 },
 ];
 
+
 const FONT = "'Gill Sans', 'Gill Sans MT', 'Trebuchet MS', sans-serif";
+
 
 function StrengthIcon({ name, emoji, size = 44, style = {} }) {
 const src = useAutoImage(name);
@@ -198,6 +227,7 @@ return <img src={src} alt={name} style={{ width: size, height: size, objectFit: 
 }
 return <span style={{ fontSize: size * 0.9, lineHeight: 1, display: "inline-block", ...style }}>{emoji}</span>;
 }
+
 
 function useBgImage(key) {
 const base = KUVA_KANSIO + key + "-bg";
@@ -221,6 +251,7 @@ return () => { cancelled = true; };
 return src;
 }
 
+
 function useLogo() {
 const [src, setSrc] = useState(null);
 useEffect(() => {
@@ -242,6 +273,7 @@ return () => { cancelled = true; };
 return src;
 }
 
+
 function Particle({ x, y, color, onDone }) {
 useEffect(() => { const t = setTimeout(onDone, 800); return () => clearTimeout(t); }, [onDone]);
 const dx = (Math.random() - 0.5) * 140;
@@ -257,6 +289,7 @@ animation: "particle-burst 0.8s ease-out forwards",
 );
 }
 
+
 function Confetti() {
 const colors = [CANDY.yellow, CANDY.coral, CANDY.pink, CANDY.mint, CANDY.orange, CANDY.blue, CANDY.lilac, CANDY.red, CANDY.white];
 const pieces = Array.from({ length: 100 }, (_, i) => ({
@@ -271,6 +304,7 @@ position: "fixed", zIndex: 9998, pointerEvents: "none",
 }));
 return <div>{pieces.map((s, i) => <div key={i} style={s} />)}</div>;
 }
+
 
 function ProgressBar({ current, total }) {
 const pct = (current / total) * 100;
@@ -296,6 +330,7 @@ boxShadow: `0 0 12px ${CANDY.yellow}88`,
 );
 }
 
+
 function FloatingIcon({ strength, emoji, index }) {
 const src = useAutoImage(strength);
 const size = 32 + (index % 3) * 12;
@@ -314,6 +349,7 @@ return <img src={src} alt="" style={{ ...style, width: size, height: size, objec
 return <div style={{ ...style, fontSize: size }}>{emoji}</div>;
 }
 
+
 function WelcomeScreen({ onStart }) {
 const bgSrc = useBgImage("welcome");
 const logoSrc = useLogo();
@@ -321,7 +357,9 @@ const bgStyle = bgSrc
 ? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
 : { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
 
+
 const floaters = [0, 3, 6, 9, 12, 15, 18, 22].map(i => STRENGTHS[i]);
+
 
 return (
 <div style={{
@@ -333,14 +371,17 @@ textAlign: "center", position: "relative", overflow: "hidden", ...bgStyle,
 <FloatingIcon key={s.strength} strength={s.strength} emoji={s.icon} index={i} />
 ))}
 
+
 {logoSrc && (
 <img src={logoSrc} alt="logo"
 style={{ width: 120, marginBottom: 24, position: "relative", zIndex: 1 }} />
 )}
 
+
 <div style={{ marginBottom: 16, animation: "bounce 1.2s ease-in-out infinite" }}>
 <StrengthIcon name={STRENGTHS[0].strength} emoji={STRENGTHS[0].icon} size={80} />
 </div>
+
 
 <h1 style={{ fontFamily: FONT, fontSize: "clamp(28px,6vw,50px)", fontWeight: 700, color: CANDY.white, lineHeight: 1.2, marginBottom: 6, textShadow: `3px 3px 0px ${CANDY.darkPurple}` }}>
 Welcome to measure
@@ -349,9 +390,10 @@ Welcome to measure
 your strengths!
 </h1>
 <p style={{ fontFamily: FONT, fontSize: "clamp(15px,2.2vw,18px)", color: CANDY.lilac, maxWidth: 380, lineHeight: 1.65, marginBottom: 52 }}>
-These 52 statements reveal your unique core strengths.
+Reveal your unique core strengths.
 Answer honestly — there are no right or wrong answers.
 </p>
+
 
 <button onClick={onStart} style={{
 padding: "18px 58px", fontSize: 20, fontFamily: FONT, fontWeight: 700,
@@ -366,11 +408,12 @@ onMouseLeave={e => { e.currentTarget.style.background = CANDY.yellow; e.currentT
 🍬 Start Survey!
 </button>
 <p style={{ marginTop: 24, fontSize: 12, color: "rgba(201,168,232,0.5)", fontFamily: FONT }}>
-VIA-based Strength Meter · 26 Strengths
+VIA-based strength meter · 26 strengths
 </p>
 </div>
 );
 }
+
 
 function QuestionScreen({ question, index, total, onAnswer }) {
 const [selected, setSelected] = useState(null);
@@ -378,11 +421,13 @@ const [particles, setParticles] = useState([]);
 const [exiting, setExiting] = useState(false);
 const [entered, setEntered] = useState(false);
 
+
 useEffect(() => {
 setSelected(null); setExiting(false);
 const t = setTimeout(() => setEntered(true), 50);
 return () => clearTimeout(t);
 }, [index]);
+
 
 const handleSelect = useCallback((optIdx, score, e) => {
 if (selected !== null) return;
@@ -400,10 +445,12 @@ setParticles(p => [...p, ...newP]);
 setTimeout(() => { setExiting(true); setTimeout(() => onAnswer(score), 420); }, 650);
 }, [selected, question.color, onAnswer]);
 
+
 const bgSrc = useBgImage("question");
 const bgStyle = bgSrc
 ? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
 : { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
 
 return (
 <div style={{
@@ -419,7 +466,9 @@ transition: "opacity 0.38s ease, transform 0.38s ease",
 onDone={() => setParticles(ps => ps.filter(x => x.id !== p.id))} />
 ))}
 
+
 <ProgressBar current={index + 1} total={total} />
+
 
 <div style={{
 maxWidth: 500, width: "100%",
@@ -441,6 +490,7 @@ borderRadius: "26px 26px 0 0",
 {question.question}
 </p>
 </div>
+
 
 <div style={{ maxWidth: 500, width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
 {ANSWER_OPTIONS.map((opt, i) => {
@@ -479,10 +529,12 @@ color: isSelected ? CANDY.darkPurple : CANDY.lilac,
 );
 }
 
+
 function ResultsScreen({ scores, onShowDistribution }) {
 const [showConfetti, setShowConfetti] = useState(true);
 const [visible, setVisible] = useState(false);
 useEffect(() => { setTimeout(() => setVisible(true), 80); setTimeout(() => setShowConfetti(false), 5500); }, []);
+
 
 const aggregated = STRENGTHS.map(s => {
 const items = scores.filter(sc => sc.strength === s.strength);
@@ -491,12 +543,14 @@ return { strength: s.strength, icon: s.icon, color: s.color, score: total };
 });
 const sorted = [...aggregated].sort((a, b) => b.score - a.score);
 const top5 = sorted.slice(0, 5);
-const medals = ["🥇","🥈","🥉","4th","5th"];
+const medals = ["🥇","🥈","🥉","4.","5."];
+
 
 const bgSrc = useBgImage("results");
 const bgStyle = bgSrc
 ? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
 : { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
 
 return (
 <div style={{
@@ -509,8 +563,9 @@ opacity: visible ? 1 : 0, transition: "opacity 0.7s ease", ...bgStyle,
 <h1 style={{ fontFamily: FONT, fontSize: "clamp(26px,5vw,42px)", color: CANDY.white, textAlign: "center", marginBottom: 4, fontWeight: 700, textShadow: `3px 3px 0px ${CANDY.darkPurple}` }}>These are your</h1>
 <h1 style={{ fontFamily: FONT, fontSize: "clamp(26px,5vw,42px)", color: CANDY.yellow, textAlign: "center", marginBottom: 12, fontWeight: 700, textShadow: `3px 3px 0px ${CANDY.darkPurple}` }}>core strengths! 🎉</h1>
 <p style={{ fontFamily: FONT, fontSize: 17, color: CANDY.lilac, marginBottom: 40, textAlign: "center" }}>
-The five strengths that shine most brightly in you.
+Five strengths that shine most brightly in you.
 </p>
+
 
 <div style={{ width: "100%", maxWidth: 500, display: "flex", flexDirection: "column", gap: 12, marginBottom: 44 }}>
 {top5.map((item, i) => (
@@ -543,6 +598,7 @@ boxShadow: dot <= item.score ? `0 0 6px ${item.color}88` : "none",
 ))}
 </div>
 
+
 <button onClick={onShowDistribution} style={{
 padding: "16px 44px", fontSize: 18, fontFamily: FONT, fontWeight: 700,
 color: CANDY.darkPurple, background: CANDY.mint,
@@ -552,11 +608,12 @@ boxShadow: `4px 4px 0px ${CANDY.darkPurple}`, transition: "all 0.18s ease",
 onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05) rotate(-1deg)"; e.currentTarget.style.background = CANDY.yellow; }}
 onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) rotate(0deg)"; e.currentTarget.style.background = CANDY.mint; }}
 >
-📊 All Strengths
+📊 My Strengths
 </button>
 </div>
 );
 }
+
 
 function DistributionScreen({ scores, onBack }) {
 const aggregated = STRENGTHS.map(s => {
@@ -568,10 +625,12 @@ const sorted = [...aggregated].sort((a, b) => b.score - a.score);
 const [visible, setVisible] = useState(false);
 useEffect(() => { setTimeout(() => setVisible(true), 50); }, []);
 
+
 const bgSrc = useBgImage("results");
 const bgStyle = bgSrc
 ? { backgroundImage: `url(${bgSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
 : { background: `radial-gradient(ellipse at 30% 20%, #7B4DB8 0%, ${CANDY.bg} 40%, ${CANDY.bgDark} 100%)` };
+
 
 return (
 <div style={{ minHeight: "100vh", padding: "44px 24px 60px", opacity: visible ? 1 : 0, transition: "opacity 0.5s ease", ...bgStyle }}>
@@ -586,12 +645,14 @@ onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.2)";
 onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
 >← Back to results</button>
 
+
 <h2 style={{ fontFamily: FONT, fontSize: "clamp(22px,4vw,32px)", color: CANDY.white, marginBottom: 4, fontWeight: 700, textShadow: `2px 2px 0px ${CANDY.darkPurple}` }}>
 Strength Distribution
 </h2>
 <p style={{ fontFamily: FONT, fontSize: 16, color: CANDY.lilac, marginBottom: 32 }}>
 All 26 strengths scored (max 10 points)
 </p>
+
 
 <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
 {sorted.map((item, i) => (
@@ -631,12 +692,15 @@ boxShadow: i < 5 ? `0 0 8px ${item.color}66` : "none",
 );
 }
 
+
 function App() {
 const [screen, setScreen] = useState("welcome");
 const [currentQ, setCurrentQ] = useState(0);
 const [scores, setScores] = useState([]);
 
+
 const handleStart = () => { setCurrentQ(0); setScores([]); setScreen("question"); };
+
 
 const handleAnswer = useCallback((rawScore) => {
 const q = QUESTIONS[currentQ];
@@ -650,6 +714,7 @@ setScreen("results");
 }
 }, [currentQ, scores]);
 
+
 return (
 <>
 {screen === "welcome" && <WelcomeScreen onStart={handleStart} />}
@@ -659,6 +724,7 @@ return (
 </>
 );
 }
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
